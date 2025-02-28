@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Poopy Room</title>
+    <title>Rusty Room</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -72,27 +72,37 @@
         let doorUnlocked = false;
         let gameWon = false;
 
-        // Walls
+        // Images for walls 0, 1, 2 (replace placeholders with file)
+        const wallImages = [
+            new Image(), // Wall 0 (Hammer)
+            new Image(), // Wall 1 (Box/Key)
+            new Image()  // Wall 2 (Door)
+        ];
+        wallImages[0].src = 'act1_table_all.png'; 
+        wallImages[1].src = 'act1_monolith_plain.png';    
+        wallImages[2].src = 'act1_cpt_door.jpg';  
+
+        // Walls (only black wall has color, others use images)
         const walls = [
             {
-                color: '#8B4513', // Brown (Hammer wall)
+                image: wallImages[0], 
                 symbol: '𒀭',      
                 object: { x: 100, y: 150, w: 50, h: 50, name: 'Hammer', pickedUp: false }
             },
             {
-                color: '#2E8B57', // Green (Box wall)
+                image: wallImages[1], 
                 symbol: '𒁹',      
                 object: { x: 200, y: 300, w: 60, h: 40, name: boxBroken ? 'Key' : 'Wooden Box' }
             },
             {
-                color: '#800080', // Purple (Door wall)
+                image: wallImages[2], 
                 symbol: '𒌋',      
                 object: { x: 150, y: 200, w: 70, h: 100, name: doorUnlocked ? 'Open Door' : 'Locked Door' }
             },
             {
-                color: '#000000', // Black (Eyes wall)
-                symbol: '👁️‍🗨️',   // Placeholder for eyes
-                object: null // No clickable object
+                color: '#000000', // Black wall (Eyes)
+                symbol: '👁️‍🗨️',  
+                object: null
             }
         ];
 
@@ -109,26 +119,29 @@
 
         // Spacebar for prompt
         document.addEventListener('keydown', (e) => {
-            if (e.key === ' ' && !gameWon) {
-                promptInput.style.display = promptInput.style.display === 'block' ? 'none' : 'block';
-                if (promptInput.style.display === 'block') promptInput.focus();
+            if (e.key === ' ' && !gameWon && promptInput.style.display !== 'block') {
+                promptInput.style.display = 'block';
+                promptInput.focus();
             }
         });
 
-        // Handle commands
-        promptInput.addEventListener('keypress', (e) => {
+        // Enter or Escape for prompt
+        promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const command = promptInput.value.toLowerCase().trim();
                 processCommand(command);
                 promptInput.value = '';
                 promptInput.style.display = 'none';
                 draw();
+            } else if (e.key === 'Escape') {
+                promptInput.value = '';
+                promptInput.style.display = 'none';
             }
         });
 
         // Click handling
         canvas.addEventListener('click', (e) => {
-            if (gameWon || currentWall === 3) return; // No clicks on win or eyes wall
+            if (gameWon || currentWall === 3) return;
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
@@ -158,9 +171,9 @@
             const eyesX = canvas.width / 2 - 20;
             const eyesY = canvas.height / 2 - 20;
             const distance = Math.sqrt((mouseX - eyesX) ** 2 + (mouseY - eyesY) ** 2);
-            if (distance < 100) { // Near eyes
+            if (distance < 100) {
                 const leftRect = leftBtn.getBoundingClientRect();
-                window.scrollTo(leftRect.left, leftRect.top); // Simulate cursor move
+                window.scrollTo(leftRect.left, leftRect.top);
             }
         });
 
@@ -182,11 +195,17 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = walls[currentWall].color;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw wall (image or color)
+            if (currentWall < 3) {
+                ctx.drawImage(walls[currentWall].image, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = walls[currentWall].color;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
             // Draw symbol
-            ctx.fillStyle = currentWall === 3 ? '#FF0000' : '#FFF'; // Red eyes, white symbols
+            ctx.fillStyle = currentWall === 3 ? '#FF0000' : '#FFF';
             ctx.font = '60px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(walls[currentWall].symbol, canvas.width / 2, canvas.height / 2);
@@ -209,7 +228,9 @@
             }
         }
 
-        draw();
+        // Ensure images load before drawing
+        Promise.all(wallImages.map(img => new Promise(resolve => img.onload = resolve)))
+            .then(() => draw());
     </script>
 </body>
 </html>
