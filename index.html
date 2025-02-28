@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rusty Room</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #333; /* Dark frame around canvas */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #gameCanvas {
+            width: 80vw; /* 80% viewport width */
+            height: 80vh; /* 80% viewport height */
+            background: #000;
+        }
+        #leftBtn, #rightBtn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            padding: 10px 20px;
+            background: #555;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #leftBtn {
+            left: 5%;
+        }
+        #rightBtn {
+            right: 5%;
+        }
+        #leftBtn:hover, #rightBtn:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <button id="leftBtn">Left</button>
+    <canvas id="gameCanvas"></canvas>
+    <button id="rightBtn">Right</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        // Wall colors (muted, not too bright/dark)
+        const walls = [
+            { color: '#6B7280' }, // North: Grayish-blue
+            { color: '#9CA3AF' }, // East: Light gray
+            { color: '#4B5563' }, // South: Darker gray
+            { color: '#D1D5DB' }  // West: Very light gray
+        ];
+
+        let currentWall = 0; // Start facing North (index 0)
+
+        // Buttons
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+
+        leftBtn.addEventListener('click', () => {
+            currentWall = (currentWall - 1 + walls.length) % walls.length; // Turn left
+            draw();
+        });
+
+        rightBtn.addEventListener('click', () => {
+            currentWall = (currentWall + 1) % walls.length; // Turn right
+            draw();
+        });
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw current wall
+            ctx.fillStyle = walls[currentWall].color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Initial draw
+        draw();
+    </script>
+</body>
+</html>
