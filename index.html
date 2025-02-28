@@ -8,15 +8,15 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: #333; /* Dark frame around canvas */
+            background: #333;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
         }
         #gameCanvas {
-            width: 80vw; /* 80% viewport width */
-            height: 80vh; /* 80% viewport height */
+            width: 80vw;
+            height: 80vh;
             background: #000;
         }
         #leftBtn, #rightBtn {
@@ -42,9 +42,9 @@
     </style>
 </head>
 <body>
-    <button id="leftBtn">Left</button>
+    <button id="leftBtn">←</button>
     <canvas id="gameCanvas"></canvas>
-    <button id="rightBtn">Right</button>
+    <button id="rightBtn">→</button>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -52,38 +52,83 @@
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
 
-        // Wall colors (muted, not too bright/dark)
+        // Walls with distinct colors, Sumerian symbols, and objects
         const walls = [
-            { color: '#6B7280' }, // North: Grayish-blue
-            { color: '#9CA3AF' }, // East: Light gray
-            { color: '#4B5563' }, // South: Darker gray
-            { color: '#D1D5DB' }  // West: Very light gray
+            {
+                color: '#8B4513', // Saddle Brown (North)
+                symbol: '𒀭',      // Sumerian "Dingir" (star-like, deity symbol)
+                object: { x: 100, y: 150, w: 50, h: 50, name: 'Clay Tablet' }
+            },
+            {
+                color: '#2E8B57', // Sea Green (East)
+                symbol: '𒁹',      // Sumerian "One" (wedge)
+                object: { x: 200, y: 300, w: 60, h: 40, name: 'Bronze Dagger' }
+            },
+            {
+                color: '#800080', // Purple (South)
+                symbol: '𒌋',      // Sumerian "Ten" (double wedge)
+                object: { x: 150, y: 200, w: 70, h: 30, name: 'Reed Basket' }
+            },
+            {
+                color: '#FFD700', // Gold (West)
+                symbol: '𒄑',      // Sumerian "Tree" (branch-like)
+                object: { x: 250, y: 250, w: 40, h: 60, name: 'Golden Idol' }
+            }
         ];
 
-        let currentWall = 0; // Start facing North (index 0)
+        let currentWall = 0;
 
         // Buttons
         const leftBtn = document.getElementById('leftBtn');
         const rightBtn = document.getElementById('rightBtn');
 
         leftBtn.addEventListener('click', () => {
-            currentWall = (currentWall - 1 + walls.length) % walls.length; // Turn left
+            currentWall = (currentWall - 1 + walls.length) % walls.length;
             draw();
         });
 
         rightBtn.addEventListener('click', () => {
-            currentWall = (currentWall + 1) % walls.length; // Turn right
+            currentWall = (currentWall + 1) % walls.length;
             draw();
+        });
+
+        // Click handling for objects
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            const obj = walls[currentWall].object;
+
+            if (clickX >= obj.x && clickX <= obj.x + obj.w &&
+                clickY >= obj.y && clickY <= obj.y + obj.h) {
+                alert(`You clicked on the ${obj.name}!`);
+            }
         });
 
         function draw() {
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw current wall
+            // Draw wall
             ctx.fillStyle = walls[currentWall].color;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Sumerian symbol (centered)
+            ctx.fillStyle = '#FFF';
+            ctx.font = '60px Arial'; // Larger for visibility
+            ctx.textAlign = 'center';
+            ctx.fillText(walls[currentWall].symbol, canvas.width / 2, canvas.height / 2);
+
+            // Draw interactive object (white rectangle for contrast)
+            const obj = walls[currentWall].object;
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+            ctx.fillStyle = '#000'; // Black text for readability
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(obj.name, obj.x + obj.w / 2, obj.y + obj.h + 20); // Label below
         }
+
 
         // Initial draw
         draw();
