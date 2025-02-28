@@ -39,12 +39,21 @@
         #leftBtn:hover, #rightBtn:hover {
             background: #777;
         }
+        #promptInput {
+            display: none;
+            position: absolute;
+            bottom: 10%;
+            width: 50vw;
+            padding: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
     <button id="leftBtn">←</button>
     <canvas id="gameCanvas"></canvas>
     <button id="rightBtn">→</button>
+    <input id="promptInput" type="text" placeholder="Type command...">
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -52,36 +61,42 @@
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
 
-        // Walls with distinct colors, Sumerian symbols, and objects
-        const walls = [
-            {
-                color: '#8B4513', // Saddle Brown (North)
-                symbol: '𒀭',      // Sumerian "Dingir" (star-like, deity symbol)
-                object: { x: 100, y: 150, w: 50, h: 50, name: 'Clay Tablet' }
-            },
-            {
-                color: '#2E8B57', // Sea Green (East)
-                symbol: '𒁹',      // Sumerian "One" (wedge)
-                object: { x: 200, y: 300, w: 60, h: 40, name: 'Bronze Dagger' }
-            },
-            {
-                color: '#800080', // Purple (South)
-                symbol: '𒌋',      // Sumerian "Ten" (double wedge)
-                object: { x: 150, y: 200, w: 70, h: 30, name: 'Reed Basket' }
-            },
-            {
-                color: '#FFD700', // Gold (West)
-                symbol: '𒄑',      // Sumerian "Tree" (branch-like)
-                object: { x: 250, y: 250, w: 40, h: 60, name: 'Golden Idol' }
-            }
-        ];
-
-        let currentWall = 0;
-
-        // Buttons
+        const promptInput = document.getElementById('promptInput');
         const leftBtn = document.getElementById('leftBtn');
         const rightBtn = document.getElementById('rightBtn');
 
+        // Game state
+        let currentWall = 0;
+        let inventory = [];
+        let boxBroken = false;
+        let doorUnlocked = false;
+        let gameWon = false;
+
+        // Walls
+        const walls = [
+            {
+                color: '#8B4513', // Brown (Hammer wall)
+                symbol: '𒀭',      
+                object: { x: 100, y: 150, w: 50, h: 50, name: 'Hammer', pickedUp: false }
+            },
+            {
+                color: '#2E8B57', // Green (Box wall)
+                symbol: '𒁹',      
+                object: { x: 200, y: 300, w: 60, h: 40, name: boxBroken ? 'Key' : 'Wooden Box' }
+            },
+            {
+                color: '#800080', // Purple (Door wall)
+                symbol: '𒌋',      
+                object: { x: 150, y: 200, w: 70, h: 100, name: doorUnlocked ? 'Open Door' : 'Locked Door' }
+            },
+            {
+                color: '#000000', // Black (Eyes wall)
+                symbol: '👁️‍🗨️',   // Placeholder for eyes
+                object: null // No clickable object
+            }
+        ];
+
+        // Button controls
         leftBtn.addEventListener('click', () => {
             currentWall = (currentWall - 1 + walls.length) % walls.length;
             draw();
@@ -92,45 +107,108 @@
             draw();
         });
 
-        // Click handling for objects
+        // Spacebar for prompt
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && !gameWon) {
+                promptInput.style.display = promptInput.style.display === 'block' ? 'none' : 'block';
+                if (promptInput.style.display === 'block') promptInput.focus();
+            }
+        });
+
+        // Handle commands
+        promptInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const command = promptInput.value.toLowerCase().trim();
+                processCommand(command);
+                promptInput.value = '';
+                promptInput.style.display = 'none';
+                draw();
+            }
+        });
+
+        // Click handling
         canvas.addEventListener('click', (e) => {
+            if (gameWon || currentWall === 3) return; // No clicks on win or eyes wall
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickY = e.clientY - rect.top;
             const obj = walls[currentWall].object;
 
-            if (clickX >= obj.x && clickX <= obj.x + obj.w &&
+            if (obj && clickX >= obj.x && clickX <= obj.x + obj.w &&
                 clickY >= obj.y && clickY <= obj.y + obj.h) {
-                alert(`You clicked on the ${obj.name}!`);
+                if (currentWall === 0 && obj.name === 'Hammer' && !obj.pickedUp) {
+                    obj.pickedUp = true;
+                    inventory.push('Hammer');
+                    alert('You picked up the Hammer!');
+                } else if (currentWall === 1 && obj.name === 'Wooden Box') {
+                    alert('Ouch! You got a splinter.');
+                } else if (currentWall === 2 && obj.name === 'Locked Door') {
+                    alert('The door is locked.');
+                }
+            }
+            draw();
+        });
+
+        // Mouse near eyes moves cursor
+        canvas.addEventListener('mousemove', (e) => {
+            if (currentWall !== 3 || gameWon) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const eyesX = canvas.width / 2 - 20;
+            const eyesY = canvas.height / 2 - 20;
+            const distance = Math.sqrt((mouseX - eyesX) ** 2 + (mouseY - eyesY) ** 2);
+            if (distance < 100) { // Near eyes
+                const leftRect = leftBtn.getBoundingClientRect();
+                window.scrollTo(leftRect.left, leftRect.top); // Simulate cursor move
             }
         });
 
-        function draw() {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function processCommand(command) {
+            if (currentWall === 1 && command === 'use hammer on box' && inventory.includes('Hammer')) {
+                boxBroken = true;
+                walls[1].object.name = 'Key';
+                alert('You smashed the box with the hammer and found a Key!');
+                inventory.push('Key');
+            } else if (currentWall === 2 && command === 'open door with key' && inventory.includes('Key')) {
+                doorUnlocked = true;
+                walls[2].object.name = 'Open Door';
+                gameWon = true;
+                alert('You unlocked the door with the key! You win!');
+            } else {
+                alert('Nothing happens.');
+            }
+        }
 
-            // Draw wall
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = walls[currentWall].color;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Sumerian symbol (centered)
-            ctx.fillStyle = '#FFF';
-            ctx.font = '60px Arial'; // Larger for visibility
+            // Draw symbol
+            ctx.fillStyle = currentWall === 3 ? '#FF0000' : '#FFF'; // Red eyes, white symbols
+            ctx.font = '60px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(walls[currentWall].symbol, canvas.width / 2, canvas.height / 2);
 
-            // Draw interactive object (white rectangle for contrast)
+            // Draw object
             const obj = walls[currentWall].object;
-            ctx.fillStyle = '#FFF';
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            ctx.fillStyle = '#000'; // Black text for readability
-            ctx.font = '16px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(obj.name, obj.x + obj.w / 2, obj.y + obj.h + 20); // Label below
+            if (obj && !(currentWall === 0 && obj.pickedUp)) {
+                ctx.fillStyle = '#FFF';
+                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                ctx.fillStyle = '#000';
+                ctx.font = '16px Arial';
+                ctx.fillText(obj.name, obj.x + obj.w / 2, obj.y + obj.h + 20);
+            }
+
+            // Win message
+            if (gameWon) {
+                ctx.fillStyle = '#FFF';
+                ctx.font = '30px Arial';
+                ctx.fillText('You Escaped!', canvas.width / 2, canvas.height / 3);
+            }
         }
 
-
-        // Initial draw
         draw();
     </script>
 </body>
