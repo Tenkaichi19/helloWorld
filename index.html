@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Drift and Russ</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <style>
         body {
             margin: 0;
@@ -15,9 +15,10 @@
             height: 100vh;
         }
         #gameCanvas {
-            width: 80vw;
-            height: 80vh;
+            width: 80vmin; /* Smaller of 80vw or 80vh */
+            height: 80vmin;
             background: #000;
+            touch-action: none;
         }
         #leftBtn, #rightBtn {
             position: absolute;
@@ -74,8 +75,9 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        const size = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8); // Square size
+        canvas.width = size;
+        canvas.height = size;
 
         const promptInput = document.getElementById('promptInput');
         const inventoryDiv = document.getElementById('inventory');
@@ -87,6 +89,7 @@
         let boxBroken = false;
         let doorUnlocked = false;
         let gameWon = false;
+        let lastTap = 0;
 
         const wallImages = [
             new Image(),
@@ -108,7 +111,6 @@
             currentWall = (currentWall - 1 + walls.length) % walls.length;
             draw();
         });
-
         rightBtn.addEventListener('click', () => {
             currentWall = (currentWall + 1) % walls.length;
             draw();
@@ -121,30 +123,38 @@
             }
         });
 
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const now = Date.now();
+            if (now - lastTap < 300 && !gameWon && promptInput.style.display !== 'block') {
+                promptInput.style.display = 'block';
+                promptInput.focus();
+            }
+            lastTap = now;
+        });
+
         promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 const command = promptInput.value.toLowerCase().trim();
                 processCommand(command);
                 promptInput.value = '';
                 promptInput.style.display = 'none';
+                promptInput.blur();
                 draw();
             } else if (e.key === 'Escape') {
                 promptInput.value = '';
                 promptInput.style.display = 'none';
+                promptInput.blur();
             }
         });
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                inventoryDiv.style.display = inventoryDiv.style.display === 'block' ? 'none' : 'block';
-                updateInventory();
-            } else if (e.key === 'Escape' && inventoryDiv.style.display === 'block') {
-                inventoryDiv.style.display = 'none';
-            }
+        canvas.addEventListener('click', handleItemInteraction);
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleItemInteraction(e.touches[0] || e.changedTouches[0]);
         });
 
-        canvas.addEventListener('click', (e) => {
+        function handleItemInteraction(e) {
             if (gameWon) return;
             const rect = canvas.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
@@ -164,10 +174,13 @@
                 }
             }
             draw();
-        });
+        }
 
         function processCommand(command) {
-            if (currentWall === 1 && command === 'use hammer on box' && inventory.some(item => item.name === 'Hammer')) {
+            if (command === 'inventory') {
+                inventoryDiv.style.display = inventoryDiv.style.display === 'block' ? 'none' : 'block';
+                updateInventory();
+            } else if (currentWall === 1 && command === 'use hammer on box' && inventory.some(item => item.name === 'Hammer')) {
                 boxBroken = true;
                 walls[1].object.name = 'Key';
                 walls[1].object.glyph = glyphs[2];
@@ -197,8 +210,8 @@
 
             const obj = walls[currentWall].object;
             if (obj && !(currentWall === 0 && obj.pickedUp)) {
-                ctx.fillStyle = '#00FF00'; // Bright green
-                ctx.font = '60px Arial';   // 1.5x larger (40px → 60px)
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '60px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(obj.glyph, obj.x + obj.w / 2, obj.y + obj.h / 2 + 15);
                 ctx.fillStyle = '#000';
